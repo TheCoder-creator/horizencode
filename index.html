@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HorizenCode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #080810;
+  --surface:   #0e0e1a;
+  --panel:     #12121e;
+  --card:      #17172a;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --accent:    #00f0c8;
+  --accent-dim:#00f0c820;
+  --purple:    #8b5cf6;
+  --purple-dim:#8b5cf620;
+  --orange:    #fb923c;
+  --green:     #22d3a8;
+  --red:       #f43f5e;
+  --yellow:    #fbbf24;
+  --blue:      #38bdf8;
+  --text:      #e2e2f0;
+  --text-2:    #9090b0;
+  --text-3:    #50507a;
+  --mono:      'JetBrains Mono', monospace;
+  --display:   'Unbounded', sans-serif;
+  --r:         6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+/* grain overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9998;
+  opacity: .5;
+}
+
+/* ── LAYOUT ── */
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  grid-template-columns: 240px 1fr;
+}
+
+/* ── HEADER ── */
+#header {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+  z-index: 100;
+}
+
+#logo-block {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  border-right: 1px solid var(--border);
+  height: 100%;
+}
+#logo-icon {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+#logo-text {
+  font-family: var(--display);
+  font-size: 11px; font-weight: 900;
+  letter-spacing: .04em;
+  color: var(--text);
+}
+#logo-text span { color: var(--accent); }
+
+#header-center {
+  flex: 1;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px;
+}
+
+/* lang pills */
+.lang-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid transparent;
+  color: var(--text-2); background: transparent;
+  transition: all .15s; letter-spacing: .04em;
+}
+.lang-pill:hover { color: var(--text); border-color: var(--border2); }
+.lang-pill.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.lang-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+#header-right {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 14px;
+  border-left: 1px solid var(--border);
+  height: 100%;
+}
+
+/* buttons */
+.hbtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 13px; border-radius: var(--r);
+  font-family: var(--display); font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; border: 1px solid transparent;
+  transition: all .15s; white-space: nowrap;
+}
+.hbtn-run    { background: var(--green); color: #000; border-color: var(--green); }
+.hbtn-run:hover { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 16px #22d3a840; }
+.hbtn-save   { background: transparent; color: var(--accent); border-color: var(--accent); }
+.hbtn-save:hover { background: var(--accent-dim); }
+.hbtn-dl     { background: transparent; color: var(--purple); border-color: var(--purple); }
+.hbtn-dl:hover { background: var(--purple-dim); }
+.hbtn-upload { background: transparent; color: var(--text-2); border-color: var(--border2); }
+.hbtn-upload:hover { color: var(--text); border-color: var(--border2); background: #ffffff08; }
+.hbtn-clear  { background: transparent; color: var(--text-3); border: none; }
+.hbtn-clear:hover { color: var(--red); }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  padding: 10px 14px 6px;
+  font-family: var(--display);
+  font-size: 8px; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+#file-list {
+  flex: 1; overflow-y: auto; padding: 6px;
+}
+#file-list::-webkit-scrollbar { width: 3px; }
+#file-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.file-entry {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: var(--r);
+  cursor: pointer; border: 1px solid transparent;
+  transition: all .1s; margin-bottom: 2px;
+}
+.file-entry:hover { background: #ffffff06; border-color: var(--border); }
+.file-entry.active { background: var(--accent-dim); border-color: var(--accent); }
+.file-entry.active .fe-name { color: var(--accent); }
+
+.fe-icon { font-size: 13px; flex-shrink: 0; line-height: 1; }
+.fe-info { flex: 1; min-width: 0; }
+.fe-name {
+  font-size: 12px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text);
+}
+.fe-meta { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+.fe-del {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: none; background: transparent;
+  color: var(--text-3); cursor: pointer; font-size: 11px;
+  opacity: 0; transition: all .1s; flex-shrink: 0;
+}
+.file-entry:hover .fe-del { opacity: 1; }
+.fe-del:hover { background: #f43f5e20; color: var(--red); }
+
+.empty-state {
+  padding: 24px 12px; text-align: center;
+  color: var(--text-3); font-size: 11px; line-height: 1.7;
+}
+.empty-state .big { font-size: 28px; margin-bottom: 8px; }
+
+#new-file-area {
+  padding: 8px; border-top: 1px solid var(--border);
+  display: flex; gap: 6px; flex-shrink: 0;
+}
+#new-file-input {
+  flex: 1; background: var(--card);
+  border: 1px solid var(--border); color: var(--text);
+  font-family: var(--mono); font-size: 11px;
+  padding: 6px 8px; border-radius: var(--r); outline: none;
+  transition: border-color .15s;
+}
+#new-file-input::placeholder { color: var(--text-3); }
+#new-file-input:focus { border-color: var(--accent); }
+#new-file-btn {
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: var(--accent); color: #000;
+  border: none; border-radius: var(--r);
+  font-size: 18px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1; transition: filter .15s;
+}
+#new-file-btn:hover { filter: brightness(1.15); }
+
+/* upload drop zone (hidden input) */
+#upload-input { display: none; }
+
+/* ── EDITOR AREA ── */
+#work-area {
+  display: grid;
+  grid-template-rows: 1fr 160px;
+  overflow: hidden;
+}
+
+#editor-pane {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+
+/* editor */
+#editor-col {
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.pane-bar {
+  height: 34px; display: flex; align-items: center; gap: 8px;
+  padding: 0 14px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.pane-bar-title {
+  font-family: var(--display); font-size: 8px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--text-3);
+}
+#active-filename {
+  font-size: 11px; color: var(--accent); font-weight: 600;
+}
+#dirty-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--yellow); display: none; flex-shrink: 0;
+}
+
+#editor {
+  flex: 1; resize: none; border: none; outline: none;
+  background: var(--surface); color: var(--text);
+  font-family: var(--mono); font-size: 13px; line-height: 1.75;
+  padding: 16px 20px; tab-size: 2; caret-color: var(--accent);
+  overflow: auto;
+}
+#editor::selection { background: #00f0c820; }
+#editor::-webkit-scrollbar { width: 4px; }
+#editor::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* preview */
+#preview-col {
+  display: flex; flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+}
+#preview-col .pane-bar {
+  background: var(--panel);
+}
+#preview-frame {
+  flex: 1; border: none;
+  background: #fff;
+}
+#preview-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; background: var(--surface);
+  color: var(--text-3);
+}
+#preview-empty .big { font-size: 36px; }
+#preview-empty p { font-size: 12px; text-align: center; line-height: 1.7; }
+#preview-empty kbd {
+  background: var(--card); border: 1px solid var(--border2);
+  padding: 1px 6px; border-radius: 4px; font-family: var(--mono);
+  font-size: 11px; color: var(--accent);
+}
+
+/* ── CONSOLE ── */
+#console-pane {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  overflow: hidden;
+}
+#console-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; height: 32px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+#console-out {
+  flex: 1; overflow-y: auto; padding: 8px 14px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+#console-out::-webkit-scrollbar { width: 3px; }
+#console-out::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.clog {
+  display: flex; gap: 12px; align-items: baseline;
+  font-size: 11.5px; line-height: 1.6;
+}
+.clog-ts { color: var(--text-3); flex-shrink: 0; font-size: 10px; }
+.clog-info { color: var(--text-2); }
+.clog-ok   { color: var(--green); }
+.clog-err  { color: var(--red); }
+.clog-warn { color: var(--yellow); }
+.clog-sys  { color: var(--purple); }
+
+/* console clear btn */
+#console-clear {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3);
+  background: none; border: none; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px;
+}
+#console-clear:hover { color: var(--red); background: #f43f5e10; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--card); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 10px 20px; border-radius: 30px;
+  box-shadow: 0 8px 32px #00000080;
+  opacity: 0; transition: all .25s; pointer-events: none; z-index: 9999;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok   { border-color: var(--green); color: var(--green); }
+#toast.err  { border-color: var(--red); color: var(--red); }
+
+/* lang dot colors */
+.dot-html   { background: #fb923c; }
+.dot-css    { background: #38bdf8; }
+.dot-js     { background: #fbbf24; }
+.dot-python { background: #34d399; }
+.dot-java   { background: #f97316; }
+.dot-txt    { background: #9090b0; }
+.dot-other  { background: #9090b0; }
+
+/* active lang pill colors */
+.lang-pill[data-lang="html"].active   { color: #fb923c; border-color: #fb923c; background: #fb923c15; }
+.lang-pill[data-lang="css"].active    { color: #38bdf8; border-color: #38bdf8; background: #38bdf815; }
+.lang-pill[data-lang="js"].active     { color: #fbbf24; border-color: #fbbf24; background: #fbbf2415; }
+.lang-pill[data-lang="python"].active { color: #34d399; border-color: #34d399; background: #34d39915; }
+.lang-pill[data-lang="java"].active   { color: #f97316; border-color: #f97316; background: #f9731615; }
+
+/* smooth entry */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#app { animation: fadeUp .3s ease; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── HEADER ── -->
+  <header id="header">
+    <div id="logo-block">
+      <div id="logo-icon">⚡</div>
+      <div id="logo-text">Horizen<span>Code</span></div>
+    </div>
+
+    <div id="header-center">
+      <button class="lang-pill active" data-lang="html">
+        <span class="lang-dot dot-html"></span>HTML
+      </button>
+      <button class="lang-pill" data-lang="css">
+        <span class="lang-dot dot-css"></span>CSS
+      </button>
+      <button class="lang-pill" data-lang="js">
+        <span class="lang-dot dot-js"></span>JS
+      </button>
+      <button class="lang-pill" data-lang="python">
+        <span class="lang-dot dot-python"></span>Python
+      </button>
+      <button class="lang-pill" data-lang="java">
+        <span class="lang-dot dot-java"></span>Java
+      </button>
+    </div>
+
+    <div id="header-right">
+      <button class="hbtn hbtn-run"    id="run-btn">▶ Run</button>
+      <button class="hbtn hbtn-save"   id="save-btn">⬇ Save</button>
+      <button class="hbtn hbtn-dl"     id="dl-btn">↓ Download</button>
+      <button class="hbtn hbtn-upload" id="upload-btn">↑ Upload</button>
+      <button class="hbtn hbtn-clear"  id="clear-btn" title="Clear editor">✕</button>
+      <input type="file" id="upload-input" multiple
+             accept=".html,.htm,.css,.js,.py,.java,.txt,.json,.md,.xml,.ts,.jsx,.tsx,.cpp,.c,.cs,.rb,.php,.go,.rs,.swift"/>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <nav id="sidebar">
+    <div class="sidebar-section">Files</div>
+    <div id="file-list"><div class="empty-state"><div class="big">📂</div>No files yet.<br/>Create or upload one.</div></div>
+    <div id="new-file-area">
+      <input id="new-file-input" type="text" placeholder="filename.html" maxlength="80" autocomplete="off"/>
+      <button id="new-file-btn" title="New file">+</button>
+    </div>
+  </nav>
+
+  <!-- ── WORK AREA ── -->
+  <div id="work-area">
+    <div id="editor-pane">
+
+      <!-- Editor column -->
+      <div id="editor-col">
+        <div class="pane-bar">
+          <span class="pane-bar-title">Editor</span>
+          <span id="active-filename">untitled</span>
+          <span id="dirty-dot" title="Unsaved changes"></span>
+        </div>
+        <textarea id="editor" spellcheck="false" placeholder="// Start typing…&#10;// Ctrl+S  →  save&#10;// Ctrl+Enter  →  run&#10;// Tab  →  2-space indent"></textarea>
+      </div>
+
+      <!-- Preview column -->
+      <div id="preview-col">
+        <div class="pane-bar">
+          <span class="pane-bar-title">Preview / Output</span>
+        </div>
+        <div id="preview-empty">
+          <div class="big">◈</div>
+          <p>Press <kbd>Run</kbd> to see output<br/>or preview HTML live.</p>
+        </div>
+        <iframe id="preview-frame" style="display:none"
+                sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+      </div>
+
+    </div>
+
+    <!-- Console -->
+    <div id="console-pane">
+      <div id="console-bar">
+        <span class="pane-bar-title" style="font-family:var(--display);font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)">Console</span>
+        <button id="console-clear">clear</button>
+      </div>
+      <div id="console-out"></div>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ══════════════════════════════════════════════════
+const DB      = 'hzcode_v3';
+const ICONS   = { html:'🌐', css:'🎨', js:'⚡', python:'🐍', java:'☕', txt:'📄', json:'📋', md:'📝', default:'📄' };
+const LANG_EXT = { html:['html','htm'], css:['css'], js:['js','jsx','ts','tsx'], python:['py'], java:['java'] };
+
+let files    = {};   // { id: { name, lang, code, size, modified } }
+let activeId = null;
+let dirty    = false;
+let pyodide  = null;
+
+// DOM refs
+const editor        = document.getElementById('editor');
+const fileList      = document.getElementById('file-list');
+const activeFilename= document.getElementById('active-filename');
+const dirtyDot      = document.getElementById('dirty-dot');
+const previewFrame  = document.getElementById('preview-frame');
+const previewEmpty  = document.getElementById('preview-empty');
+const consoleOut    = document.getElementById('console-out');
+const uploadInput   = document.getElementById('upload-input');
+const newFileInput  = document.getElementById('new-file-input');
+const toast         = document.getElementById('toast');
+
+// ══════════════════════════════════════════════════
+//  PERSISTENCE
+// ══════════════════════════════════════════════════
+function dbLoad() {
+  try { files = JSON.parse(localStorage.getItem(DB) || '{}'); }
+  catch { files = {}; }
+}
+function dbSave() {
+  try { localStorage.setItem(DB, JSON.stringify(files)); }
+  catch(e) { clog('err', 'Storage full! Consider downloading large files.'); }
+}
+function uid() { return crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'').slice(0,12) : Math.random().toString(36).slice(2,14) + Date.now().toString(36); }
+
+// ══════════════════════════════════════════════════
+//  LANG HELPERS
+// ══════════════════════════════════════════════════
+function extToLang(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  for (const [lang, exts] of Object.entries(LANG_EXT)) {
+    if (exts.includes(ext)) return lang;
+  }
+  return 'txt';
+}
+function activeLang() {
+  return document.querySelector('.lang-pill.active')?.dataset.lang || 'js';
+}
+function setLangTab(lang) {
+  document.querySelectorAll('.lang-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.lang === lang);
+  });
+}
+function fileIcon(lang) { return ICONS[lang] || ICONS.default; }
+
+// ══════════════════════════════════════════════════
+//  FILE OPERATIONS
+// ══════════════════════════════════════════════════
+function createFile(name) {
+  name = name.trim();
+  if (!name) return;
+  if (!name.includes('.')) name += '.js';
+  const id   = uid();
+  const lang = extToLang(name);
+  files[id] = { name, lang, code: '', modified: Date.now(), size: 0 };
+  dbSave();
+  renderFileList();
+  openFile(id);
+  showToast(`Created ${name}`, 'ok');
+}
+
+function openFile(id) {
+  if (dirty && activeId && files[activeId]) {
+    files[activeId].code = editor.value;
+    files[activeId].size = new Blob([editor.value]).size;
+    files[activeId].modified = Date.now();
+    dbSave();
+  }
+  activeId = id;
+  dirty    = false;
+  dirtyDot.style.display = 'none';
+  const f  = files[id];
+  editor.value = f.code;
+  activeFilename.textContent = f.name;
+  setLangTab(f.lang);
+  renderFileList();
+  // reset preview
+  previewFrame.style.display = 'none';
+  previewEmpty.style.display = 'flex';
+}
+
+function saveActive() {
+  if (!activeId) { showToast('No file open', 'err'); return; }
+  files[activeId].code     = editor.value;
+  files[activeId].size     = new Blob([editor.value]).size;
+  files[activeId].modified = Date.now();
+  files[activeId].lang     = activeLang();
+  dbSave();
+  dirty = false;
+  dirtyDot.style.display = 'none';
+  renderFileList();
+  clog('ok', `Saved "${files[activeId].name}"`);
+  showToast('Saved ✓', 'ok');
+}
+
+function deleteFile(id) {
+  const f = files[id];
+  if (!confirm(`Delete "${f.name}"?`)) return;
+  delete files[id];
+  if (activeId === id) {
+    activeId = null; dirty = false;
+    editor.value = '';
+    activeFilename.textContent = 'untitled';
+    dirtyDot.style.display = 'none';
+    previewFrame.style.display = 'none';
+    previewEmpty.style.display = 'flex';
+  }
+  dbSave();
+  renderFileList();
+  showToast(`Deleted ${f.name}`, 'ok');
+}
+
+function downloadActive() {
+  if (!activeId) { showToast('No file open', 'err'); return; }
+  saveActive();
+  const f    = files[activeId];
+  const blob = new Blob([f.code], { type: 'text/plain' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = f.name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  clog('ok', `Downloaded "${f.name}"`);
+  showToast(`Downloaded ${f.name}`, 'ok');
+}
+
+function handleUpload(fileObjs) {
+  Array.from(fileObjs).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const id   = uid();
+      const lang = extToLang(file.name);
+      files[id] = {
+        name:     file.name,
+        lang,
+        code:     e.target.result,
+        size:     file.size,
+        modified: Date.now(),
+      };
+      dbSave();
+      renderFileList();
+      openFile(id);
+      clog('ok', `Uploaded "${file.name}" (${fmtSize(file.size)})`);
+      showToast(`Uploaded ${file.name}`, 'ok');
+    };
+    reader.onerror = () => clog('err', `Failed to read ${file.name}`);
+    reader.readAsText(file);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER FILE LIST
+// ══════════════════════════════════════════════════
+function renderFileList() {
+  const entries = Object.entries(files).sort((a,b) => b[1].modified - a[1].modified);
+  if (!entries.length) {
+    fileList.innerHTML = '<div class="empty-state"><div class="big">📂</div>No files yet.<br/>Create or upload one.</div>';
+    return;
+  }
+  fileList.innerHTML = '';
+  entries.forEach(([id, f]) => {
+    const el = document.createElement('div');
+    el.className = 'file-entry' + (id === activeId ? ' active' : '');
+    el.innerHTML = `
+      <span class="fe-icon">${fileIcon(f.lang)}</span>
+      <div class="fe-info">
+        <div class="fe-name">${escHtml(f.name)}</div>
+        <div class="fe-meta">${f.lang.toUpperCase()} · ${fmtSize(f.size||0)}</div>
+      </div>
+      <button class="fe-del" title="Delete" data-id="${id}">✕</button>
+    `;
+    el.addEventListener('click', e => { if (!e.target.closest('.fe-del')) openFile(id); });
+    el.querySelector('.fe-del').addEventListener('click', e => { e.stopPropagation(); deleteFile(id); });
+    fileList.appendChild(el);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  CONSOLE
+// ══════════════════════════════════════════════════
+function clog(type, msg) {
+  const ts  = new Date().toLocaleTimeString('en-US', { hour12:false });
+  const row = document.createElement('div');
+  row.className = `clog clog-${type}`;
+  row.innerHTML = `<span class="clog-ts">${ts}</span><span>${escHtml(String(msg))}</span>`;
+  consoleOut.appendChild(row);
+  consoleOut.scrollTop = consoleOut.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════
+//  RUN
+// ══════════════════════════════════════════════════
+function runCode() {
+  const lang = activeLang();
+  const code = editor.value;
+  if (!code.trim()) { clog('warn', 'Nothing to run.'); return; }
+
+  previewEmpty.style.display = 'none';
+  previewFrame.style.display = 'block';
+
+  if (lang === 'html') {
+    previewFrame.srcdoc = code;
+    clog('ok', 'HTML rendered ✓');
+    return;
+  }
+
+  if (lang === 'css') {
+    previewFrame.srcdoc = `<!DOCTYPE html><html><head><style>
+      body{margin:0;padding:24px;font-family:system-ui;background:#fff}
+      ${code}
+    </style></head><body>
+      <h1>CSS Preview</h1><p>A paragraph of sample text.</p>
+      <button>Button</button>
+      <input type="text" placeholder="Input field" style="margin:8px"/>
+      <ul><li>List item one</li><li>List item two</li></ul>
+      <div class="box" style="width:80px;height:80px;background:#eee;margin-top:8px"></div>
+    </body></html>`;
+    clog('ok', 'CSS rendered with sample elements ✓');
+    return;
+  }
+
+  if (lang === 'js') {
+    previewFrame.srcdoc = `<!DOCTYPE html><html><head>
+      <style>body{margin:0;padding:16px;font-family:monospace;font-size:13px;background:#0e0e1a;color:#e2e2f0;}</style>
+    </head><body><div id="output"></div><script>
+      const _out = document.getElementById('output');
+      const _push = (color, ...args) => {
+        const d = document.createElement('div');
+        d.style.cssText = 'color:'+color+';margin:1px 0;white-space:pre-wrap;word-break:break-all';
+        d.textContent = args.map(a => typeof a === 'object' ? JSON.stringify(a,null,2) : String(a)).join(' ');
+        _out.appendChild(d);
+        window.parent.postMessage({type:'log',msg:args.map(String).join(' ')},'*');
+      };
+      console.log   = (...a) => _push('#22d3a8', ...a);
+      console.error = (...a) => _push('#f43f5e', ...a);
+      console.warn  = (...a) => _push('#fbbf24', ...a);
+      console.info  = (...a) => _push('#38bdf8', ...a);
+      window.onerror = (msg,_,line,col) => {
+        _push('#f43f5e', \`Error [L\${line}:C\${col}]: \${msg}\`);
+        window.parent.postMessage({type:'err',msg},'*');
+        return true;
+      };
+      try { ${code.replace(/<\/script>/gi,'<\\/script>')} }
+      catch(e){ _push('#f43f5e', 'Error: '+e.message); window.parent.postMessage({type:'err',msg:e.message},'*'); }
+    <\/script></body></html>`;
+    clog('ok', 'JS executed — output shown in preview ✓');
+    return;
+  }
+
+  if (lang === 'python') {
+    previewFrame.style.display = 'none';
+    previewEmpty.style.display = 'flex';
+    runPython(code);
+    return;
+  }
+
+  if (lang === 'java') {
+    previewFrame.style.display = 'none';
+    previewEmpty.style.display = 'flex';
+    analyzeJava(code);
+    return;
+  }
+}
+
+// ── Python via Pyodide ──
+async function runPython(code) {
+  clog('sys', 'Loading Python (Pyodide) — first run may take a moment…');
+  try {
+    if (!pyodide) {
+      if (!window.loadPyodide) {
+        await loadScript('https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js');
+      }
+      pyodide = await window.loadPyodide({ stdout: s => clog('ok', s), stderr: s => clog('err', s) });
+    }
+    await pyodide.runPythonAsync(code);
+    clog('ok', 'Python finished ✓');
+  } catch(e) {
+    clog('err', e.message);
+  }
+}
+
+// ── Java static analysis ──
+function analyzeJava(code) {
+  clog('sys', 'Java static analysis (browser cannot compile JVM bytecode):');
+  const classes = (code.match(/(?:class|interface|enum)\s+(\w+)/g)||[]).map(m=>m.replace(/\w+\s+/,''));
+  const methods = (code.match(/(?:public|private|protected|static|void|\w+)\s+\w+\s*\([^)]*\)\s*\{/g)||[]).length;
+  const hasMain = /public\s+static\s+void\s+main\s*\(\s*String/.test(code);
+  clog('info', `Classes/Interfaces: ${classes.join(', ') || 'none'}`);
+  clog('info', `Method blocks found: ${methods}`);
+  clog(hasMain ? 'ok' : 'warn', hasMain ? '✓ main() entry point detected' : '⚠ No main(String[] args) found');
+  clog('warn', 'To actually run Java, use a backend compiler endpoint.');
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ── iframe → console bridge ──
+window.addEventListener('message', e => {
+  if (!e.data) return;
+  if (e.data.type === 'log') clog('ok', e.data.msg);
+  if (e.data.type === 'err') clog('err', e.data.msg);
+});
+
+// ══════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='ok') {
+  toast.textContent = msg;
+  toast.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.className = '', 2200);
+}
+
+// ══════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+// ══════════════════════════════════════════════════
+//  EVENT WIRING
+// ══════════════════════════════════════════════════
+document.getElementById('run-btn').addEventListener('click', runCode);
+document.getElementById('save-btn').addEventListener('click', saveActive);
+document.getElementById('dl-btn').addEventListener('click', downloadActive);
+document.getElementById('clear-btn').addEventListener('click', () => {
+  if (confirm('Clear the editor?')) { editor.value = ''; dirty = true; dirtyDot.style.display = 'block'; }
+});
+
+document.getElementById('upload-btn').addEventListener('click', () => uploadInput.click());
+uploadInput.addEventListener('change', e => { handleUpload(e.target.files); uploadInput.value = ''; });
+
+// drag-drop onto editor
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files);
+});
+
+document.getElementById('new-file-btn').addEventListener('click', () => {
+  createFile(newFileInput.value || 'untitled.js');
+  newFileInput.value = '';
+});
+newFileInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { createFile(newFileInput.value || 'untitled.js'); newFileInput.value = ''; }
+});
+
+document.querySelectorAll('.lang-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.lang-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    if (activeId) { files[activeId].lang = pill.dataset.lang; dbSave(); renderFileList(); }
+  });
+});
+
+editor.addEventListener('input', () => {
+  dirty = true; dirtyDot.style.display = 'block';
+});
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart, en = editor.selectionEnd;
+    editor.value = editor.value.slice(0,s) + '  ' + editor.value.slice(en);
+    editor.selectionStart = editor.selectionEnd = s + 2;
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key === 's')     { e.preventDefault(); saveActive(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); runCode(); }
+});
+
+document.getElementById('console-clear').addEventListener('click', () => consoleOut.innerHTML = '');
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+dbLoad();
+renderFileList();
+
+// seed welcome file on first visit
+if (!Object.keys(files).length) {
+  const id = uid();
+  const welcome = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      height: 100vh; display: flex;
+      align-items: center; justify-content: center;
+      background: #080810; font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    .card {
+      text-align: center; padding: 48px 56px;
+      background: #12121e; border: 1px solid #ffffff10;
+      border-radius: 16px;
+      box-shadow: 0 24px 80px #00000080;
+    }
+    h1 { font-size: 2rem; color: #00f0c8; margin-bottom: 12px; }
+    p  { color: #9090b0; line-height: 1.8; font-size: 15px; }
+    .kbd {
+      display: inline-block; background: #0e0e1a;
+      border: 1px solid #ffffff20; border-radius: 5px;
+      padding: 1px 8px; font-family: monospace; color: #00f0c8; font-size: 13px;
+    }
+    .badge {
+      display: inline-block; margin-top: 20px;
+      background: linear-gradient(135deg, #00f0c8, #8b5cf6);
+      color: #000; font-weight: 700; font-size: 12px; letter-spacing: .08em;
+      padding: 6px 18px; border-radius: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>⚡ HorizenCode</h1>
+    <p>
+      Edit · Run · Save · Upload · Download<br/>
+      <span class="kbd">Ctrl+Enter</span> to run &nbsp;·&nbsp; <span class="kbd">Ctrl+S</span> to save
+    </p>
+    <div class="badge">Ready to code</div>
+  </div>
+</body>
+</html>`;
+  files[id] = { name:'welcome.html', lang:'html', code:welcome, size:welcome.length, modified:Date.now() };
+  dbSave();
+  renderFileList();
+  openFile(id);
+} else {
+  // reopen last modified
+  const last = Object.entries(files).sort((a,b) => b[1].modified - a[1].modified)[0];
+  if (last) openFile(last[0]);
+}
+
+clog('sys', 'HorizenCode ready — Ctrl+S save · Ctrl+Enter run · drag & drop to upload');
+</script>
+</body>
+</html>
