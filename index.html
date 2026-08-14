@@ -347,6 +347,41 @@ body::after {
 #toast.ok   { border-color: var(--green); color: var(--green); }
 #toast.err  { border-color: var(--red); color: var(--red); }
 
+/* ── AUTOCOMPLETE BOX ── */
+#autocomplete-box {
+  position: absolute;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10000;
+  display: none;
+  min-width: 140px;
+  padding: 4px;
+}
+#autocomplete-box.active { display: block; }
+#autocomplete-box .ac-item {
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+#autocomplete-box .ac-item:hover {
+  background: var(--accent-dim);
+}
+#autocomplete-box .ac-item.selected {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+#autocomplete-box::-webkit-scrollbar { width: 4px; }
+#autocomplete-box::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 4px; }
+
 /* lang dot colors */
 .dot-html   { background: #fb923c; }
 .dot-css    { background: #38bdf8; }
@@ -460,6 +495,7 @@ body::after {
   </div>
 
 </div>
+<div id="autocomplete-box"></div>
 <div id="toast"></div>
 
 <script>
@@ -469,6 +505,15 @@ body::after {
 const DB      = 'hzcode_v3';
 const ICONS   = { html:'🌐', css:'🎨', js:'⚡', python:'🐍', java:'☕', txt:'📄', json:'📋', md:'📝', default:'📄' };
 const LANG_EXT = { html:['html','htm'], css:['css'], js:['js','jsx','ts','tsx'], python:['py'], java:['java'] };
+
+// Autocomplete dictionary for built-in suggestions
+const SUGGESTIONS = {
+  html: ['html', 'head', 'body', 'div', 'span', 'a', 'img', 'ul', 'ol', 'li', 'button', 'input', 'script', 'style', 'link', 'meta', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'footer', 'section', 'article', 'nav', 'main', 'form', 'label', 'table', 'tr', 'td', 'th', 'video', 'audio', 'canvas', 'svg', 'path', 'class', 'id', 'href', 'src', 'alt', 'width', 'height', 'placeholder', 'type', 'value', 'onclick', 'onload'],
+  css: ['color', 'background', 'background-color', 'margin', 'padding', 'display', 'flex', 'grid', 'width', 'height', 'position', 'absolute', 'relative', 'fixed', 'border', 'border-radius', 'font-size', 'font-weight', 'text-align', 'justify-content', 'align-items', 'flex-direction', 'gap', 'transform', 'transition', 'animation', 'opacity', 'box-shadow', 'z-index', 'top', 'left', 'right', 'bottom', 'overflow'],
+  js: ['function', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'return', 'document', 'window', 'console', 'addEventListener', 'querySelector', 'getElementById', 'createElement', 'appendChild', 'innerHTML', 'textContent', 'classList', 'setAttribute', 'fetch', 'then', 'catch', 'Promise', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Math', 'JSON', 'Object', 'Array', 'String', 'Number', 'Boolean', 'null', 'undefined', 'true', 'false'],
+  python: ['def', 'class', 'import', 'from', 'if', 'else', 'elif', 'for', 'while', 'return', 'print', 'self', 'None', 'True', 'False', 'range', 'len', 'str', 'int', 'float', 'list', 'dict', 'tuple', 'set', 'open', 'with', 'as', 'try', 'except', 'finally', 'raise', 'lambda', 'map', 'filter', 'reduce'],
+  java: ['public', 'private', 'protected', 'class', 'void', 'int', 'String', 'boolean', 'char', 'double', 'float', 'long', 'short', 'if', 'else', 'for', 'while', 'do', 'return', 'System', 'out', 'println', 'print', 'import', 'package', 'new', 'this', 'super', 'extends', 'implements', 'interface', 'abstract', 'static', 'final', 'try', 'catch', 'finally', 'throw', 'throws', 'ArrayList', 'HashMap', 'LinkedList', 'Scanner']
+};
 
 let files    = {};   // { id: { name, lang, code, size, modified } }
 let activeId = null;
@@ -486,6 +531,11 @@ const consoleOut    = document.getElementById('console-out');
 const uploadInput   = document.getElementById('upload-input');
 const newFileInput  = document.getElementById('new-file-input');
 const toast         = document.getElementById('toast');
+const acBox         = document.getElementById('autocomplete-box');
+
+let acList = [];
+let acIndex = 0;
+let acWord = '';
 
 // ══════════════════════════════════════════════════
 //  PERSISTENCE
@@ -554,6 +604,7 @@ function openFile(id) {
   // reset preview
   previewFrame.style.display = 'none';
   previewEmpty.style.display = 'flex';
+  hideAutocomplete();
 }
 
 function saveActive() {
@@ -568,6 +619,7 @@ function saveActive() {
   renderFileList();
   clog('ok', `Saved "${files[activeId].name}"`);
   showToast('Saved ✓', 'ok');
+  hideAutocomplete();
 }
 
 function deleteFile(id) {
@@ -581,6 +633,7 @@ function deleteFile(id) {
     dirtyDot.style.display = 'none';
     previewFrame.style.display = 'none';
     previewEmpty.style.display = 'flex';
+    hideAutocomplete();
   }
   dbSave();
   renderFileList();
@@ -672,6 +725,7 @@ function runCode() {
   const code = editor.value;
   if (!code.trim()) { clog('warn', 'Nothing to run.'); return; }
 
+  hideAutocomplete();
   previewEmpty.style.display = 'none';
   previewFrame.style.display = 'block';
 
@@ -795,6 +849,131 @@ function showToast(msg, type='ok') {
 }
 
 // ══════════════════════════════════════════════════
+//  AUTOCOMPLETE LOGIC
+// ══════════════════════════════════════════════════
+function getCaretCoordinates(textarea, position) {
+  const properties = [
+    'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'borderStyle', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize', 'fontSizeAdjust',
+    'lineHeight', 'fontFamily', 'textAlign', 'textTransform', 'textIndent',
+    'textDecoration', 'letterSpacing', 'wordSpacing', 'tabSize'
+  ];
+  const div = document.createElement('div');
+  div.id = '__caret_mirror';
+  document.body.appendChild(div);
+  const style = div.style;
+  const computed = window.getComputedStyle(textarea);
+  style.whiteSpace = 'pre-wrap';
+  style.wordWrap = 'break-word';
+  style.position = 'absolute';
+  style.visibility = 'hidden';
+  properties.forEach(prop => style[prop] = computed[prop]);
+  
+  const rect = textarea.getBoundingClientRect();
+  style.top = rect.top + 'px';
+  style.left = rect.left + 'px';
+
+  const text = textarea.value.substring(0, position);
+  div.textContent = text;
+  
+  const span = document.createElement('span');
+  span.textContent = textarea.value.substring(position) || '.';
+  div.appendChild(span);
+  
+  const coordinates = {
+    top: span.offsetTop - textarea.scrollTop + parseInt(computed.borderTopWidth) + 16,
+    left: span.offsetLeft - textarea.scrollLeft + parseInt(computed.borderLeftWidth)
+  };
+  
+  document.body.removeChild(div);
+  return coordinates;
+}
+
+function updateAutocomplete() {
+  const cursorPos = editor.selectionStart;
+  const text = editor.value.substring(0, cursorPos);
+  const match = text.match(/([a-zA-Z0-9_]+)$/);
+  
+  if (!match) {
+    hideAutocomplete();
+    return;
+  }
+  
+  const word = match[1];
+  if (word.length < 1) {
+    hideAutocomplete();
+    return;
+  }
+
+  const lang = activeLang();
+  const suggestions = (SUGGESTIONS[lang] || []).filter(s => s.toLowerCase().startsWith(word.toLowerCase()));
+  
+  if (suggestions.length > 0) {
+    showAutocomplete(suggestions, word);
+  } else {
+    hideAutocomplete();
+  }
+}
+
+function showAutocomplete(suggestions, word) {
+  acList = suggestions;
+  acWord = word;
+  acIndex = 0;
+  
+  acBox.innerHTML = suggestions.map((s, i) => 
+    `<div class="ac-item ${i === 0 ? 'selected' : ''}" data-val="${s}">${s}</div>`
+  ).join('');
+  
+  const coords = getCaretCoordinates(editor, editor.selectionStart);
+  acBox.style.top = coords.top + 'px';
+  acBox.style.left = coords.left + 'px';
+  acBox.classList.add('active');
+
+  // Attach mousedown to prevent editor blur
+  acBox.querySelectorAll('.ac-item').forEach(item => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault(); 
+      const val = item.getAttribute('data-val');
+      replaceWord(val);
+    });
+  });
+}
+
+function hideAutocomplete() {
+  acBox.classList.remove('active');
+  acList = [];
+}
+
+function isAutocompleteVisible() {
+  return acBox.classList.contains('active');
+}
+
+function moveAutocomplete(dir) {
+  acIndex = (acIndex + dir + acList.length) % acList.length;
+  const items = acBox.querySelectorAll('.ac-item');
+  items.forEach((item, i) => item.classList.toggle('selected', i === acIndex));
+  if (items[acIndex]) items[acIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function replaceWord(val) {
+  const cursorPos = editor.selectionStart;
+  const wordStart = cursorPos - acWord.length;
+  editor.value = editor.value.substring(0, wordStart) + val + editor.value.substring(cursorPos);
+  editor.selectionStart = editor.selectionEnd = wordStart + val.length;
+  hideAutocomplete();
+  dirty = true; dirtyDot.style.display = 'block';
+  editor.focus();
+}
+
+function acceptAutocomplete() {
+  if (acList.length > 0) {
+    replaceWord(acList[acIndex]);
+  }
+}
+
+// ══════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════
 function escHtml(s) {
@@ -813,7 +992,7 @@ document.getElementById('run-btn').addEventListener('click', runCode);
 document.getElementById('save-btn').addEventListener('click', saveActive);
 document.getElementById('dl-btn').addEventListener('click', downloadActive);
 document.getElementById('clear-btn').addEventListener('click', () => {
-  if (confirm('Clear the editor?')) { editor.value = ''; dirty = true; dirtyDot.style.display = 'block'; }
+  if (confirm('Clear the editor?')) { editor.value = ''; dirty = true; dirtyDot.style.display = 'block'; hideAutocomplete(); }
 });
 
 document.getElementById('upload-btn').addEventListener('click', () => uploadInput.click());
@@ -839,22 +1018,79 @@ document.querySelectorAll('.lang-pill').forEach(pill => {
     document.querySelectorAll('.lang-pill').forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     if (activeId) { files[activeId].lang = pill.dataset.lang; dbSave(); renderFileList(); }
+    hideAutocomplete();
   });
 });
 
 editor.addEventListener('input', () => {
   dirty = true; dirtyDot.style.display = 'block';
+  updateAutocomplete();
 });
+
 editor.addEventListener('keydown', e => {
+  // Autocomplete Navigation
+  if (isAutocompleteVisible()) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveAutocomplete(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); moveAutocomplete(-1); return; }
+    if (e.key === 'Enter' || e.key === 'Tab' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      acceptAutocomplete();
+      return;
+    }
+    if (e.key === 'Escape') { hideAutocomplete(); return; }
+  }
+
+  // Auto-closing Brackets/Quotes
+  const pairs = { '(': ')', '[': ']', '{': '}', "'": "'", '"': '"', '`': '`' };
+  if (pairs[e.key]) {
+    e.preventDefault();
+    const s = editor.selectionStart, en = editor.selectionEnd;
+    if (s === en) {
+      editor.value = editor.value.slice(0, s) + e.key + pairs[e.key] + editor.value.slice(en);
+      editor.selectionStart = editor.selectionEnd = s + 1;
+    } else {
+      editor.value = editor.value.slice(0, s) + e.key + editor.value.slice(s, en) + pairs[e.key] + editor.value.slice(en);
+      editor.selectionStart = s + 1;
+      editor.selectionEnd = en + 1;
+    }
+    dirty = true; dirtyDot.style.display = 'block';
+    hideAutocomplete();
+    return;
+  }
+
+  // Backspace Pair Deletion
+  if (e.key === 'Backspace') {
+    const s = editor.selectionStart, en = editor.selectionEnd;
+    if (s === en && s > 0) {
+      const charBefore = editor.value[s - 1];
+      const charAfter = editor.value[s];
+      if (pairs[charBefore] && pairs[charBefore] === charAfter) {
+        e.preventDefault();
+        editor.value = editor.value.slice(0, s - 1) + editor.value.slice(s + 1);
+        editor.selectionStart = editor.selectionEnd = s - 1;
+        dirty = true; dirtyDot.style.display = 'block';
+        hideAutocomplete();
+        return;
+      }
+    }
+  }
+
+  // Tab Indent (falls through if autocomplete is not visible)
   if (e.key === 'Tab') {
     e.preventDefault();
     const s = editor.selectionStart, en = editor.selectionEnd;
     editor.value = editor.value.slice(0,s) + '  ' + editor.value.slice(en);
     editor.selectionStart = editor.selectionEnd = s + 2;
+    hideAutocomplete();
   }
+
+  // Save / Run
   if ((e.ctrlKey||e.metaKey) && e.key === 's')     { e.preventDefault(); saveActive(); }
   if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); runCode(); }
 });
+
+editor.addEventListener('scroll', hideAutocomplete);
+editor.addEventListener('blur', () => setTimeout(hideAutocomplete, 120));
 
 document.getElementById('console-clear').addEventListener('click', () => consoleOut.innerHTML = '');
 
@@ -921,7 +1157,7 @@ if (!Object.keys(files).length) {
   if (last) openFile(last[0]);
 }
 
-clog('sys', 'HorizenCode ready — Ctrl+S save · Ctrl+Enter run · drag & drop to upload');
+clog('sys', 'HorizenCode ready — Type to see suggestions. Ctrl+S save · Ctrl+Enter run · drag & drop to upload');
 </script>
 </body>
 </html>
