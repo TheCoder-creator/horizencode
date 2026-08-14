@@ -6,6 +6,14 @@
 <title>HorizenCode</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet"/>
+<!-- Prism.js for Syntax Highlighting -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
 <style>
 :root {
   --bg:        #080810;
@@ -238,12 +246,14 @@ body::after {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow: hidden;
+  position: relative;
 }
 .pane-bar {
   height: 34px; display: flex; align-items: center; gap: 8px;
   padding: 0 14px; flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+  z-index: 2;
 }
 .pane-bar-title {
   font-family: var(--display); font-size: 8px; font-weight: 700;
@@ -257,16 +267,76 @@ body::after {
   background: var(--yellow); display: none; flex-shrink: 0;
 }
 
-#editor {
-  flex: 1; resize: none; border: none; outline: none;
-  background: var(--surface); color: var(--text);
-  font-family: var(--mono); font-size: 13px; line-height: 1.75;
-  padding: 16px 20px; tab-size: 2; caret-color: var(--accent);
+/* Highlighting Layer & Textarea Sync */
+#editor-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#highlight-layer, #editor {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.75;
+  padding: 16px 20px;
+  tab-size: 2;
+  border: none;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
   overflow: auto;
 }
-#editor::selection { background: #00f0c820; }
+#highlight-layer {
+  z-index: 1;
+  pointer-events: none;
+  color: var(--text);
+  background: transparent;
+}
+#editor {
+  z-index: 2;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--accent);
+  resize: none;
+  outline: none;
+}
+#editor::selection { background: #00f0c830; }
 #editor::-webkit-scrollbar { width: 4px; }
 #editor::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ── SYNTAX HIGHLIGHTING THEME ── */
+#highlight-layer .token.comment,
+#highlight-layer .token.prolog,
+#highlight-layer .token.doctype,
+#highlight-layer .token.cdata { color: #50507a; font-style: italic; }
+#highlight-layer .token.punctuation { color: #9090b0; }
+#highlight-layer .token.property,
+#highlight-layer .token.tag,
+#highlight-layer .token.constant,
+#highlight-layer .token.symbol,
+#highlight-layer .token.deleted { color: #f43f5e; }
+#highlight-layer .token.boolean,
+#highlight-layer .token.number { color: #fb923c; }
+#highlight-layer .token.selector,
+#highlight-layer .token.attr-name,
+#highlight-layer .token.string,
+#highlight-layer .token.char,
+#highlight-layer .token.builtin,
+#highlight-layer .token.inserted { color: #22d3a8; }
+#highlight-layer .token.operator,
+#highlight-layer .token.entity,
+#highlight-layer .token.url,
+#highlight-layer .language-css .token.string,
+#highlight-layer .style .token.string { color: #38bdf8; }
+#highlight-layer .token.atrule,
+#highlight-layer .token.attr-value,
+#highlight-layer .token.keyword { color: #f43f5e; font-weight: bold; }
+#highlight-layer .token.function,
+#highlight-layer .token.class-name { color: #fbbf24; }
+#highlight-layer .token.regex,
+#highlight-layer .token.important,
+#highlight-layer .token.variable { color: #8b5cf6; }
 
 /* preview */
 #preview-col {
@@ -466,7 +536,10 @@ body::after {
           <span id="active-filename">untitled</span>
           <span id="dirty-dot" title="Unsaved changes"></span>
         </div>
-        <textarea id="editor" spellcheck="false" placeholder="// Start typing…&#10;// Ctrl+S  →  save&#10;// Ctrl+Enter  →  run&#10;// Tab  →  2-space indent"></textarea>
+        <div id="editor-wrap">
+          <div id="highlight-layer"></div>
+          <textarea id="editor" spellcheck="false" placeholder="// Start typing…&#10;// Ctrl+S  →  save&#10;// Ctrl+Enter  →  run&#10;// Tab  →  2-space indent"></textarea>
+        </div>
       </div>
 
       <!-- Preview column -->
@@ -505,6 +578,7 @@ body::after {
 const DB      = 'hzcode_v3';
 const ICONS   = { html:'🌐', css:'🎨', js:'⚡', python:'🐍', java:'☕', txt:'📄', json:'📋', md:'📝', default:'📄' };
 const LANG_EXT = { html:['html','htm'], css:['css'], js:['js','jsx','ts','tsx'], python:['py'], java:['java'] };
+const PRISM_LANG = { html:'markup', css:'css', js:'javascript', python:'python', java:'java', txt:'none' };
 
 // Autocomplete dictionary for built-in suggestions
 const SUGGESTIONS = {
@@ -522,6 +596,7 @@ let pyodide  = null;
 
 // DOM refs
 const editor        = document.getElementById('editor');
+const highlightLayer= document.getElementById('highlight-layer');
 const fileList      = document.getElementById('file-list');
 const activeFilename= document.getElementById('active-filename');
 const dirtyDot      = document.getElementById('dirty-dot');
@@ -571,6 +646,29 @@ function setLangTab(lang) {
 function fileIcon(lang) { return ICONS[lang] || ICONS.default; }
 
 // ══════════════════════════════════════════════════
+//  SYNTAX HIGHLIGHTING
+// ══════════════════════════════════════════════════
+function highlightCode() {
+  let code = editor.value;
+  // Fix trailing newline issue causing scrollbar mismatch
+  if (code.endsWith('\n')) code += ' ';
+  
+  const lang = activeLang();
+  const prismLang = PRISM_LANG[lang] || 'none';
+  
+  if (window.Prism && prismLang !== 'none' && Prism.languages[prismLang]) {
+    highlightLayer.innerHTML = Prism.highlight(code, Prism.languages[prismLang], prismLang);
+  } else {
+    highlightLayer.textContent = code;
+  }
+}
+
+function syncScroll() {
+  highlightLayer.scrollTop = editor.scrollTop;
+  highlightLayer.scrollLeft = editor.scrollLeft;
+}
+
+// ══════════════════════════════════════════════════
 //  FILE OPERATIONS
 // ══════════════════════════════════════════════════
 function createFile(name) {
@@ -605,6 +703,7 @@ function openFile(id) {
   previewFrame.style.display = 'none';
   previewEmpty.style.display = 'flex';
   hideAutocomplete();
+  highlightCode();
 }
 
 function saveActive() {
@@ -634,6 +733,7 @@ function deleteFile(id) {
     previewFrame.style.display = 'none';
     previewEmpty.style.display = 'flex';
     hideAutocomplete();
+    highlightCode();
   }
   dbSave();
   renderFileList();
@@ -964,6 +1064,7 @@ function replaceWord(val) {
   editor.selectionStart = editor.selectionEnd = wordStart + val.length;
   hideAutocomplete();
   dirty = true; dirtyDot.style.display = 'block';
+  highlightCode();
   editor.focus();
 }
 
@@ -992,7 +1093,12 @@ document.getElementById('run-btn').addEventListener('click', runCode);
 document.getElementById('save-btn').addEventListener('click', saveActive);
 document.getElementById('dl-btn').addEventListener('click', downloadActive);
 document.getElementById('clear-btn').addEventListener('click', () => {
-  if (confirm('Clear the editor?')) { editor.value = ''; dirty = true; dirtyDot.style.display = 'block'; hideAutocomplete(); }
+  if (confirm('Clear the editor?')) { 
+    editor.value = ''; 
+    dirty = true; dirtyDot.style.display = 'block'; 
+    hideAutocomplete(); 
+    highlightCode();
+  }
 });
 
 document.getElementById('upload-btn').addEventListener('click', () => uploadInput.click());
@@ -1019,13 +1125,17 @@ document.querySelectorAll('.lang-pill').forEach(pill => {
     pill.classList.add('active');
     if (activeId) { files[activeId].lang = pill.dataset.lang; dbSave(); renderFileList(); }
     hideAutocomplete();
+    highlightCode();
   });
 });
 
 editor.addEventListener('input', () => {
   dirty = true; dirtyDot.style.display = 'block';
   updateAutocomplete();
+  highlightCode();
 });
+
+editor.addEventListener('scroll', syncScroll);
 
 editor.addEventListener('keydown', e => {
   // Autocomplete Navigation
@@ -1055,6 +1165,7 @@ editor.addEventListener('keydown', e => {
     }
     dirty = true; dirtyDot.style.display = 'block';
     hideAutocomplete();
+    highlightCode();
     return;
   }
 
@@ -1070,6 +1181,7 @@ editor.addEventListener('keydown', e => {
         editor.selectionStart = editor.selectionEnd = s - 1;
         dirty = true; dirtyDot.style.display = 'block';
         hideAutocomplete();
+        highlightCode();
         return;
       }
     }
@@ -1082,6 +1194,7 @@ editor.addEventListener('keydown', e => {
     editor.value = editor.value.slice(0,s) + '  ' + editor.value.slice(en);
     editor.selectionStart = editor.selectionEnd = s + 2;
     hideAutocomplete();
+    highlightCode();
   }
 
   // Save / Run
@@ -1089,7 +1202,6 @@ editor.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); runCode(); }
 });
 
-editor.addEventListener('scroll', hideAutocomplete);
 editor.addEventListener('blur', () => setTimeout(hideAutocomplete, 120));
 
 document.getElementById('console-clear').addEventListener('click', () => consoleOut.innerHTML = '');
